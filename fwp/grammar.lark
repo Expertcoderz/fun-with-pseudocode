@@ -1,0 +1,253 @@
+// This file contains an EBNF grammar specification (with Lark extensions)
+// that tries its very best to describe the pseudocode syntax.
+
+// Currently, some constructs used in this specification rely on the Earley
+// parser; improvements should be applied to make it work with LALR(1).
+
+// Development reference:
+// https://lark-parser.readthedocs.io/en/stable/grammar.html
+
+block: _DELIMITER* (statement _DELIMITER+)+
+
+?statement: COMMENT -> comment
+	| constant_declaration
+	| variable_declaration
+	| variable_assignment
+	| typedef
+	| set_definition
+	| procedure
+	| function
+	| return
+	| call
+	| call_expression
+	| input
+	| output
+	| openfile
+	| readfile
+	| writefile
+	| closefile
+	| seek
+	| getrecord
+	| putrecord
+	| if
+	| case
+	| for
+	| repeat
+	| while
+	| class
+
+
+// Declarations
+
+constant_declaration: "CONSTANT" IDENTIFIER "=" _literal
+
+variable_declaration: "DECLARE"? IDENTIFIER ":" \
+	[ARRAY_TYPE "[" _array_ranges "]" "OF"] DATA_TYPE
+
+ARRAY_TYPE: "ARRAY"
+
+_array_ranges: array_range | array_range "," _array_ranges
+
+array_range: expression ":" expression
+
+
+// Assignments
+
+variable_assignment: _primary _ASSIGNMENT_OPERATOR expression
+
+_primary: IDENTIFIER | array_subscription | record_access | dereference
+
+
+// Expressions, operators and rvalues
+
+?expression: junction
+
+?junction: inversion
+	| inversion ("AND" junction)+ -> and
+	| inversion ("OR" junction)+ -> or
+
+?inversion: comparison
+	| "NOT" comparison -> not
+
+?comparison: sum
+	| sum (">" comparison)+ -> gt
+	| sum ("<" comparison)+ -> lt
+	| sum (">=" comparison)+ -> ge
+	| sum ("<=" comparison)+ -> le
+	| sum ("=" comparison)+ -> eq
+	| sum ("<>" comparison)+ -> ne
+
+?sum: term
+	| term ("+" sum)+ -> add
+	| term ("-" sum)+ -> sub
+	| term ("&" sum)+ -> concat
+
+?term: negation
+	| negation ("*" term)+ -> mul
+	| negation ("/" term)+ -> div
+	| negation ("DIV" term)+ -> intdiv
+	| negation ("MOD" term)+ -> mod
+
+?negation: atom
+	| "-" atom -> neg
+
+// The most tighly bound unit of an expression.
+?atom: _literal
+	| _primary
+	| pointer
+	| call_expression
+	| new
+	| "(" expression ")"
+
+_literal: INTEGER_LITERAL
+	| REAL_LITERAL
+	| CHAR_LITERAL
+	| STRING_LITERAL
+	| BOOLEAN_LITERAL
+	| DATE_LITERAL
+
+array_subscription: _primary "[" _array_index "]"
+
+_array_index: expression | expression "," _array_index
+
+
+// User-defined types
+
+typedef: "TYPE" IDENTIFIER ("=" (enum | pointer | set) | record)
+
+enum: "(" _enums ")"
+
+_enums: IDENTIFIER | IDENTIFIER "," _enums
+
+pointer_type: "^" DATA_TYPE
+
+pointer: "^" expression
+
+dereference: expression "^"
+
+set: "SET" "OF" DATA_TYPE
+
+set_definition: "DEFINE" IDENTIFIER "(" _set_elements ")" ":" IDENTIFIER
+
+_set_elements: _literal | _literal "," _set_elements
+
+record: _DELIMITER+ (variable_declaration _DELIMITER+)+ "ENDTYPE"
+
+record_access: _primary "." IDENTIFIER
+
+
+// Selection
+
+if: "IF" expression "THEN"? _DELIMITER block ["ELSE" block] "ENDIF"
+
+case: "CASE" "OF"? expression _DELIMITER _EMPTY_STATEMENT* case_block+ \
+	["OTHERWISE" ":" block] "ENDCASE"
+
+case_block: expression ":" block
+
+
+// Iteration
+
+for: "FOR" IDENTIFIER _ASSIGNMENT_OPERATOR expression \
+	"TO" expression ["STEP" expression] \
+	_DELIMITER \
+	block \
+	("NEXT" IDENTIFIER | "ENDFOR")
+
+repeat: "REPEAT" block "UNTIL" expression
+
+while: "WHILE" expression _DELIMITER block "ENDWHILE"
+
+
+// Procedures and functions
+
+call_expression: _primary "(" _call_values? ")"
+
+call: "CALL" _primary ["(" _call_values? ")"]
+
+_call_values: expression | _call_values "," _call_values
+
+procedure: "PROCEDURE" IDENTIFIER "(" _parameters? ")" \
+	block "ENDPROCEDURE"
+
+function: "FUNCTION" IDENTIFIER "(" _parameters? ")" "RETURNS" DATA_TYPE \
+	block "ENDFUNCTION"
+
+return: "RETURN" expression
+
+_parameters: parameter | parameter "," _parameters
+
+parameter: [PARAMETER_QUALIFIER] IDENTIFIER ":" DATA_TYPE
+
+
+// OOP constructs
+
+class: "CLASS" IDENTIFIER ["INHERITS" IDENTIFIER] \
+	_DELIMITER+ (member_declaration _DELIMITER+)+ "ENDCLASS"
+
+member_declaration: [MEMBER_VISIBILITY] \
+	(variable_declaration | procedure | function)
+
+MEMBER_VISIBILITY: "PUBLIC" | "PRIVATE"
+
+new: "NEW" IDENTIFIER "(" _call_values? ")"
+
+
+// I/O commands
+
+input: "INPUT" _primary
+
+output: "OUTPUT" _output_value
+
+_output_value: expression | _output_value "," _output_value
+
+openfile: "OPENFILE" STRING_LITERAL "FOR" FILE_MODE
+
+FILE_MODE: "READ" | "WRITE" | "APPEND" | "RANDOM"
+
+readfile: "READFILE" STRING_LITERAL "," _primary
+
+writefile: "WRITEFILE" STRING_LITERAL "," expression
+
+closefile: "CLOSEFILE" STRING_LITERAL
+
+seek: "SEEK" STRING_LITERAL "," expression
+
+getrecord: "GETRECORD" STRING_LITERAL "," _primary
+
+putrecord: "PUTRECORD" STRING_LITERAL "," _primary
+
+
+// Terminals
+
+COMMENT: CPP_COMMENT
+
+IDENTIFIER: CNAME
+
+DATA_TYPE: "INTEGER" | "REAL" | "CHAR" | "STRING" | "BOOLEAN" | "DATE"
+	| IDENTIFIER
+
+INTEGER_LITERAL: INT
+
+REAL_LITERAL: INT "." INT
+
+CHAR_LITERAL: "'" /./ "'" | "ꞌ" /./ "ꞌ"
+
+STRING_LITERAL: ESCAPED_STRING
+
+BOOLEAN_LITERAL: "TRUE" | "FALSE"
+
+DATE_LITERAL: INT ~ 2 "/" INT ~ 2 "/" INT ~ 4
+
+_ASSIGNMENT_OPERATOR: ("←" | "<-" | "=")
+
+PARAMETER_QUALIFIER: "BYREF" | "BYVAL"
+
+_DELIMITER: "\n" | ";" // Yeah, we accept semicolons as statement delimiters.
+
+_EMPTY_STATEMENT: COMMENT? _DELIMITER
+
+WHITESPACE: (" " | "\t")+
+%ignore WHITESPACE
+
+%import common (CNAME, CPP_COMMENT, ESCAPED_STRING, INT)

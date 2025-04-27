@@ -1,0 +1,23 @@
+// Description: prints out numbers in the Fibonacci sequence.
+
+DECLARE Limit: INTEGER
+
+INPUT Limit
+
+DECLARE Prev : INTEGER
+DECLARE This : INTEGER
+
+Prev <- 0
+This <- 1
+
+OUTPUT Prev
+OUTPUT This
+
+FOR i <- 1 TO Limit - 1
+	DECLARE Next : INTEGER
+	Next <- Prev + This
+	OUTPUT Next
+
+	Prev <- This
+	This <- Next
+NEXT i
