@@ -26,8 +26,12 @@ class Entity:
     _kind: EntityKind = EntityKind.NORMAL
     _operand_class: type[Entity] | None = None
     _node_name: Callable[[type[Self]], str] | None = None
+
+    _global_class_registry: set[str] = set()
     _class_registry: dict[str, type[Self]] = {}
     _instance_registry: dict[str, Self] = {}
+
+    class UnhandledNode(Exception): ...
 
     def __new__(cls, parser_node: Tree | Token, /) -> Self:
         if cls._kind != EntityKind.GENERIC:
@@ -51,30 +55,8 @@ class Entity:
         if specific_class := cls._class_registry.get(node_name):
             return specific_class(parser_node)
 
-        assert isinstance(
-            parser_node, Tree
-        ), f"not a Tree; cannot auto-create Entity subclass of {cls!r}: {parser_node!r}"
-
-        # Derive the class name from the node name.
-        name = "".join(list(map(str.capitalize, node_name.split("_"))))
-
-        # Create the new subclass and register it.
-        auto_class = cls._class_registry[node_name] = cast(
-            type[Self],
-            type(name, (cls,), {"__name__": name, "__slots__": ("operands",)}),
-        )
-
-        return auto_class(parser_node)
-
-    def __init__(self, parser_node: Tree | Token, /) -> None:
-        assert isinstance(
-            parser_node, Tree
-        ), f"using default __init__() for Entity {self!r} but node is not a Tree: {parser_node!r}"
-
-        parent_class = cast(type[Entity], type(self).__bases__[0])
-        # pylint: disable=assigning-non-slot,no-member
-        self.operands: list[Entity] | None = list(
-            map(parent_class._operand_class or parent_class, parser_node.children)
+        raise cls.UnhandledNode(
+            f"Could not find a class for node {parser_node!r} under {cls!r}"
         )
 
     def __init_subclass__(
@@ -82,7 +64,6 @@ class Entity:
         /,
         *,
         kind: EntityKind = EntityKind.NORMAL,
-        operand_class: type[Entity] | None = None,
         node_name: str | Callable[[type[Self]], str] | None = None,
         terminal: bool = False,
     ) -> None:
@@ -101,7 +82,9 @@ class Entity:
 
         # Note: this also (intentionally) resets _kind to EntityKind.GENERIC for all subclasses.
         cls._kind = kind
-        cls._operand_class = operand_class
+
+        cls._class_registry = {}
+        cls._instance_registry = {}
 
         if kind == EntityKind.GENERIC:
             assert node_name is None or isinstance(
@@ -109,10 +92,6 @@ class Entity:
             ), f"node_name for generic Entity class {cls!r} is set to a non-callable"
             cls._node_name = node_name
             return
-
-        assert (
-            not operand_class
-        ), f"operand_class given for non-generic Entity class: {cls!r}"
 
         node_name = cls._node_name
 
@@ -126,8 +105,27 @@ class Entity:
         assert issubclass(
             cls.__bases__[0], Entity
         ), f"parent of Entity class {cls!r} is not Entity"
-        # pylint: disable=no-member
-        cls.__bases__[0]._class_registry[node_name] = cls
+
+        cls._register_class(node_name)
+
+    @classmethod
+    def _register_class(cls, node_name: str, /):
+        assert (
+            node_name not in cls._global_class_registry
+        ), f"duplicate registration of entity class for {node_name}"
+
+        cls._global_class_registry.add(node_name)
+
+        def recurse_base(base: type[Entity], /) -> None:
+            if base == Entity:
+                return
+
+            base._class_registry[node_name] = cls
+
+            for parent in base.__bases__:
+                recurse_base(parent)
+
+        recurse_base(cls)
 
     def __str__(self, /, *, depth: int = 0) -> str:
         result = ["(" + self.__class__.__name__]
@@ -174,7 +172,9 @@ class DataType(Entity, kind=EntityKind.SINGLETON):
 
 
 class DataObject(
-    Entity, kind=EntityKind.GENERIC, node_name=lambda cls: cls.TYPE_NAME + "_LITERAL"
+    Expression,
+    kind=EntityKind.GENERIC,
+    node_name=lambda cls: cls.TYPE_NAME + "_LITERAL",
 ):
     TYPE_NAME: str = "OBJECT"
 
@@ -183,7 +183,7 @@ class DataObject(
     def __init__(self, literal: Token, /) -> None:
         self.representation: str = literal.value
 
-    def __str__(self, *, depth: int = 0) -> str:
+    def __str__(self, /, *, depth: int = 0) -> str:
         del depth
         return f"{self.TYPE_NAME}:{self.representation}"
 
@@ -216,7 +216,72 @@ class BooleanDataObject(DataObject):
     TYPE_NAME = "BOOLEAN"
 
 
-class Statement(Entity, kind=EntityKind.GENERIC, operand_class=Expression): ...
+class BinaryOperation(Expression):
+    __slots__ = ("operands",)
+
+    def __init__(self, expr: Tree, /) -> None:
+        self.operands = list(map(Expression, expr.children))
+
+
+class Add(BinaryOperation): ...
+
+
+class Sub(BinaryOperation): ...
+
+
+class Mul(BinaryOperation): ...
+
+
+class Div(BinaryOperation): ...
+
+
+class Gt(BinaryOperation): ...
+
+
+class Lt(BinaryOperation): ...
+
+
+class Ge(BinaryOperation): ...
+
+
+class Le(BinaryOperation): ...
+
+
+class Eq(BinaryOperation): ...
+
+
+class Ne(BinaryOperation): ...
+
+
+class Concat(BinaryOperation): ...
+
+
+class Intdiv(BinaryOperation): ...
+
+
+class Mod(BinaryOperation): ...
+
+
+class And(BinaryOperation): ...
+
+
+class Or(BinaryOperation): ...
+
+
+class UnaryOperation(Expression):
+    __slots__ = ("operand",)
+
+    def __init__(self, expr: Tree, /) -> None:
+        self.operand = Expression(expr.children[0])
+
+
+class Neg(UnaryOperation): ...
+
+
+class Not(UnaryOperation): ...
+
+
+class Statement(Entity, kind=EntityKind.GENERIC): ...
 
 
 class Comment(Statement):
@@ -306,10 +371,20 @@ class For(Statement):
 
 
 class Case(Statement):
-    __slots__ = ("predicate",)
+    __slots__ = ("predicate", "blocks")
 
     def __init__(self, stmt: Tree, /) -> None:
         self.predicate = Expression(stmt.children[0])
+        self.blocks = list(map(CaseBlock, stmt.children[1:-1]))
+
+
+class CaseBlock(Entity):
+    __slots__ = ("predicate_start", "predicate_end", "block")
+
+    def __init__(self, block: Tree, /) -> None:
+        self.predicate_start = Expression(block.children[0])
+        self.predicate_end = block.children[1] and Expression(block.children[1])
+        self.block = Block(block.children[2])
 
 
 class Procedure(Statement):
@@ -351,7 +426,7 @@ class Return(Statement):
         self.value = Expression(return_stmt.children[0]) if return_stmt else None
 
 
-class GenericCall(Entity):
+class GenericCall(Statement):
     __slots__ = ("target", "arguments")
 
     def __init__(self, tree: Tree, /) -> None:
@@ -359,7 +434,7 @@ class GenericCall(Entity):
         self.arguments = list(map(Expression, tree.children[1:]))
 
 
-class Call(Statement, GenericCall): ...
+class Call(GenericCall): ...
 
 
 class CallExpression(Expression, GenericCall): ...
@@ -384,7 +459,7 @@ class MemberDeclaration(Statement):
         self.declaration = Statement(memb_decl.children[1])
 
 
-class RecordAccess(Expression):
+class RecordAccess(Primary):
     __slots__ = ("container", "item")
 
     def __init__(self, record_access: Tree, /) -> None:
@@ -397,3 +472,21 @@ class Input(Statement):
 
     def __init__(self, input_stmt: Tree, /) -> None:
         self.target = Primary(cast(Token, input_stmt.children[0]))
+
+
+class GenericCommand(Statement):
+    __slots__ = ("arguments",)
+
+    def __init__(self, cmd: Tree, /) -> None:
+        self.arguments = list(map(Expression, cmd.children))
+
+
+class Output(GenericCommand): ...
+
+
+class New(Expression):
+    __slots__ = ("identifier", "arguments")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, stmt.children[0]))
+        self.arguments = list(map(Expression, stmt.children[1:]))
