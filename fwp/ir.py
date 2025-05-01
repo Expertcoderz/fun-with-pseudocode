@@ -370,6 +370,22 @@ class For(Statement):
         self.body = Block(stmt.children[4])
 
 
+class While(Statement):
+    __slots__ = ("predicate", "block")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.predicate = Expression(stmt.children[0])
+        self.block = Block(stmt.children[1])
+
+
+class Repeat(Statement):
+    __slots__ = ("block", "predicate")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.block = Block(stmt.children[0])
+        self.predicate = Expression(stmt.children[1])
+
+
 class Case(Statement):
     __slots__ = ("predicate", "blocks")
 
