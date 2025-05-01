@@ -418,10 +418,17 @@ class Procedure(Statement):
         self.identifier = Identifier(cast(Token, tree.children[0]))
 
         self.parameters = []
+
+        byref = False
         for param in tree.children[1:]:
             if not isinstance(param, Tree) or param.data != "parameter":
                 break
-            self.parameters.append(Parameter(param))
+
+            byref = param.children[0] == "BYREF" if param.children[0] else byref
+
+            param_obj = Parameter(param)
+            param_obj.is_byref = byref
+            self.parameters.append(param_obj)
 
         self.body = Block(tree.children[-1])
 
@@ -440,7 +447,7 @@ class Parameter(Entity):
     def __init__(self, param: Tree, /) -> None:
         self.identifier = Identifier(cast(Token, param.children[1]))
         self.datatype = DataType(cast(Token, param.children[2]))
-        self.is_byref = param.children[0] == "BYREF"
+        self.is_byref: bool
 
 
 class Return(Statement):
