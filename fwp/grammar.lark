@@ -7,9 +7,9 @@
 // Development reference:
 // https://lark-parser.readthedocs.io/en/stable/grammar.html
 
-block: _DELIMITER* (statement _DELIMITER+)*
+block: _DELIMITER* (statement comment? _DELIMITER+)*
 
-?statement: COMMENT -> comment
+?statement: comment
 	| constant_declaration
 	| variable_declaration
 	| variable_assignment
@@ -35,6 +35,8 @@ block: _DELIMITER* (statement _DELIMITER+)*
 	| repeat
 	| while
 	| class
+
+comment: COMMENT
 
 
 // Declarations
