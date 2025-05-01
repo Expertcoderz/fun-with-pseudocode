@@ -340,6 +340,14 @@ class VariableAssignment(Statement):
         self.value = Expression(tree.children[1])
 
 
+class ArraySubscription(Primary):
+    __slots__ = ("target", "subscript")
+
+    def __init__(self, pri: Tree, /) -> None:
+        self.target = Primary(pri.children[0])
+        self.subscript = Expression(pri.children[1])
+
+
 class Block(Entity):
     __slots__ = ("statements",)
 
