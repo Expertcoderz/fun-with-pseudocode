@@ -27,7 +27,6 @@ class Entity:
     _operand_class: type[Entity] | None = None
     _node_name: Callable[[type[Self]], str] | None = None
 
-    _global_class_registry: set[str] = set()
     _class_registry: dict[str, type[Self]] = {}
     _instance_registry: dict[str, Self] = {}
 
@@ -110,15 +109,13 @@ class Entity:
 
     @classmethod
     def _register_class(cls, node_name: str, /):
-        assert (
-            node_name not in cls._global_class_registry
-        ), f"duplicate registration of entity class for {node_name}"
-
-        cls._global_class_registry.add(node_name)
-
         def recurse_base(base: type[Entity], /) -> None:
             if base == Entity:
                 return
+
+            assert (
+                node_name not in base._class_registry
+            ), f"duplicate registration of entity class for {node_name} under {cls!r}"
 
             base._class_registry[node_name] = cls
 
@@ -504,7 +501,7 @@ class PointerType(TypeDefinition):
         self.type = DataType(cast(Token, typedef.children[0]))
 
 
-class GenericPointer(Expression):
+class GenericPointer(Entity):
     __slots__ = ("target",)
 
     def __init__(self, pri: Tree, /) -> None:
@@ -514,7 +511,7 @@ class GenericPointer(Expression):
 class Pointer(Primary, GenericPointer): ...
 
 
-class PointerDereference(GenericPointer): ...
+class PointerDereference(Expression, GenericPointer): ...
 
 
 class Record(TypeDefinition):
