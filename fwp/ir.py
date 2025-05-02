@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from enum import Enum, auto
-from typing import Self, cast
+from typing import Iterable, Self, cast
 
 from lark import Tree, Token
 
@@ -469,6 +469,66 @@ class Call(GenericCall): ...
 
 
 class CallExpression(Expression, GenericCall): ...
+
+
+class Typedef(Statement):
+    __slots__ = ("identifier", "definition")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, stmt.children[0]))
+        self.definition = TypeDefinition(stmt.children[1])
+
+
+class TypeDefinition(Entity, kind=EntityKind.GENERIC): ...
+
+
+class EnumValues(TypeDefinition):
+    __slots__ = ("values",)
+
+    def __init__(self, typedef: Tree, /) -> None:
+        self.values = list(map(Identifier, cast(Iterable[Token], typedef.children)))
+
+
+class SetDefinition(Statement):
+    __slots__ = ("identifier", "elements")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, stmt.children[0]))
+        self.elements = list(map(Expression, stmt.children[1:]))
+
+
+class PointerType(TypeDefinition):
+    __slots__ = ("type",)
+
+    def __init__(self, typedef: Tree, /) -> None:
+        self.type = DataType(cast(Token, typedef.children[0]))
+
+
+class GenericPointer(Expression):
+    __slots__ = ("target",)
+
+    def __init__(self, pri: Tree, /) -> None:
+        self.target = Expression(pri.children[0])
+
+
+class Pointer(Primary, GenericPointer): ...
+
+
+class PointerDereference(GenericPointer): ...
+
+
+class Record(TypeDefinition):
+    __slots__ = ("members",)
+
+    def __init__(self, typedef: Tree, /) -> None:
+        self.members = list(map(Statement, typedef.children))
+
+
+class SetType(TypeDefinition):
+    __slots__ = ("type",)
+
+    def __init__(self, typedef: Tree, /) -> None:
+        self.type = DataType(cast(Token, typedef.children[0]))
 
 
 class Class(Statement):
