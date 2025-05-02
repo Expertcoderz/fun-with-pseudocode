@@ -57,7 +57,10 @@ array_range: expression ":" expression
 
 variable_assignment: _primary _ASSIGNMENT_OPERATOR expression
 
-_primary: IDENTIFIER | array_subscription | record_access | dereference
+_primary: IDENTIFIER
+	| array_subscription
+	| record_access
+	| pointer_dereference
 
 
 // Expressions, operators and rvalues
@@ -115,9 +118,10 @@ _array_index: expression | expression "," _array_index
 
 // User-defined types
 
-typedef: "TYPE" IDENTIFIER ("=" (enum | pointer | set) | record)
+typedef: "TYPE" IDENTIFIER \
+	("=" (enum_values | pointer_type | set_type) | record)
 
-enum: "(" _enums ")"
+enum_values: "(" _enums ")"
 
 _enums: IDENTIFIER | IDENTIFIER "," _enums
 
@@ -125,9 +129,9 @@ pointer_type: "^" DATA_TYPE
 
 pointer: "^" expression
 
-dereference: expression "^"
+pointer_dereference: expression "^"
 
-set: "SET" "OF" DATA_TYPE
+set_type: "SET" "OF" DATA_TYPE
 
 set_definition: "DEFINE" IDENTIFIER "(" _set_elements ")" ":" IDENTIFIER
 
