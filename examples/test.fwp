@@ -1,0 +1,188 @@
+// Description: a general test program for the pseudocode syntax.
+
+//// Constants ////
+
+CONSTANT Yes = TRUE
+
+OUTPUT Yes
+
+
+//// Variables and expressions ////
+
+DECLARE Num : INTEGER
+
+Num <- 42
+Num <- 1 + 2 + 3 * (4 + 5)
+
+OUTPUT Num
+
+SomeBoolean <- INT(12.55) + 2 <> 14 OR NOT 4 <= 10 - 2 / 0.2 + 2
+
+OUTPUT SomeBoolean
+
+String <- "aaa" & "bbb"
+
+OUTPUT String
+
+
+//// Arrays ////
+
+DECLARE Names : ARRAY[1:10] OF STRING
+
+Names[1] <- "Foo"
+Names[2] <- "Bar"
+
+OUTPUT Names
+
+DECLARE Grid3D : ARRAY[0:9,0:9] OF INTEGER
+
+FOR i <- 0 TO 9
+	Grid3D[i][i] <- i * 2
+NEXT i
+
+OUTPUT Grid3D
+
+
+//// Selection ////
+
+CONSTANT SpeedMps = 299792458
+
+IF SpeedMps > 90000 THEN
+	OUTPUT "Speeding detected!"
+	OUTPUT "Speed in km/h:", SpeedMps * 60 / 1000
+
+	IF SpeedMps > 1000000 THEN
+		OUTPUT "Going impossibly fast!"
+	ENDIF
+ELSE
+	OUTPUT "Uuuh..."
+ENDIF
+
+DECLARE Word : STRING
+
+Word <- "foo"
+
+CASE OF Word
+	"foo" : OUTPUT "yay"
+		Word <- Word & "d"
+	"food" : OUTPUT "too early"
+	OTHERWISE : OUTPUT "FAIL"
+ENDCASE
+
+OUTPUT "gimme some", Word
+
+CONSTANT Three = 3
+
+CASE OF Three
+	1 TO 3 : OUTPUT "If you aren't seeing this, something went wrong."
+ENDCASE
+
+
+//// Loops ////
+
+FOR i <- 1 TO 10 STEP 1 + 1
+	OUTPUT i
+NEXT i
+
+DECLARE Health : INTEGER
+Health = 3
+
+WHILE Health > 0
+	OUTPUT "Slaughtering in progress..."
+	Health <- Health - 1
+ENDWHILE
+
+REPEAT
+	OUTPUT "Resuscitation in progress..."
+	Health <- Health + 1
+UNTIL Health >= 3
+
+
+//// Procedures and functions ////
+
+PROCEDURE DoFoo(Foo : INTEGER)
+	OUTPUT Foo, "// 2 =", Foo DIV 2
+ENDPROCEDURE
+
+FUNCTION Max(Num1 : INTEGER, Num2 : INTEGER) RETURNS INTEGER
+	IF Num1 > Num2 THEN
+		RETURN Num1
+	ENDIF
+	RETURN Num2
+ENDFUNCTION
+
+CALL DoFoo(Max(Num, 100))
+
+PROCEDURE SwapAndAdd(BYREF A : INTEGER, A : INTEGER, BYVAL C : INTEGER)
+	Temp <- A
+	A <- B + C
+	B <- Temp + C
+ENDPROCEDURE
+
+Num1 <- 5
+Num2 <- 7
+
+SwapAndAdd(Num1, Num2, 3) // `CALL` may be omitted
+
+
+//// User-defined types ////
+
+TYPE TColor = (Red, Green, Blue)
+
+TYPE TColorPointer = ^TColor
+
+DECLARE ThisColor : TColor
+DECLARE NextColor : TColor
+DECLARE ColorPointer : TColorPointer
+
+ThisColor <- Red
+ColorPointer <- ^Color
+NextColor <- ColorPointer^ + 1
+
+TYPE EventRecord
+	DECLARE Date : DATE
+	DECLARE Description : STRING
+	DECLARE Severity : INTEGER
+ENDTYPE
+
+DECLARE EventLog : ARRAY[1:5] OF EventRecord
+
+TYPE IntegerSet = SET OF INTEGER
+DEFINE Primes (2, 3, 5, 7, 11) : IntegerSet
+
+
+//// OOP constructs ////
+
+CLASS Thing
+	PRIVATE SecretBoolean : BOOLEAN
+	PUBLIC Thingness : REAL
+
+	PUBLIC PROCEDURE NEW(InitialThingness : REAL)
+		Thingness <- InitialThingness
+	ENDPROCEDURE
+
+	PUBLIC FUNCTION EnhanceThingness(Magnitude : REAL) RETURNS REAL
+		Thingness <- Thingness + Magnitude
+		SecretBoolean <- Thingness MOD 2 = 0
+		RETURN Thingness
+	ENDFUNCTION
+ENDCLASS
+
+CLASS NamedThing INHERITS Thing
+	PUBLIC Name : STRING
+
+	PUBLIC PROCEDURE NEW(GivenName : STRING, InitialThingness : REAL)
+		SUPER.NEW(InitialThingness)
+		SetName(GivenName)
+	ENDPROCEDURE
+
+	PRIVATE PROCEDURE SetName(GivenName : STRING)
+		Name <- GivenName
+	ENDPROCEDURE
+ENDCLASS
+
+Something <- NEW Thing(4.2)
+OUTPUT Something.EnhanceThingness(10)
+
+SomethingSpecific <- NEW NamedThing("Item", -4.2)
+OUTPUT SomethingSpecific.NAME
