@@ -194,8 +194,6 @@ class: "CLASS" IDENTIFIER ["INHERITS" IDENTIFIER] \
 member_declaration: [MEMBER_VISIBILITY] \
 	(variable_declaration | procedure | function)
 
-MEMBER_VISIBILITY: "PUBLIC" | "PRIVATE"
-
 new: "NEW" IDENTIFIER "(" _call_values? ")"
 
 
@@ -208,8 +206,6 @@ output: "OUTPUT" _output_value
 _output_value: expression | _output_value "," _output_value
 
 open_file: "OPENFILE" STRING_LITERAL "FOR" FILE_MODE
-
-FILE_MODE: "READ" | "WRITE" | "APPEND" | "RANDOM"
 
 read_file: "READFILE" STRING_LITERAL "," _primary
 
@@ -248,6 +244,10 @@ DATE_LITERAL: INT ~ 2 "/" INT ~ 2 "/" INT ~ 4
 _ASSIGNMENT_OPERATOR: ("←" | "<-" | "=")
 
 PARAMETER_QUALIFIER: "BYREF" | "BYVAL"
+
+MEMBER_VISIBILITY: "PUBLIC" | "PRIVATE"
+
+FILE_MODE: "READ" | "WRITE" | "APPEND" | "RANDOM"
 
 _DELIMITER: "\n" | ";" // Yeah, we accept semicolons as statement delimiters.
 
