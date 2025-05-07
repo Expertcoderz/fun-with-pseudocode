@@ -22,13 +22,13 @@ block: _DELIMITER* (statement comment? _DELIMITER+)*
 	| call_expression
 	| input
 	| output
-	| openfile
-	| readfile
-	| writefile
-	| closefile
+	| open_file
+	| read_file
+	| write_file
+	| close_file
 	| seek
-	| getrecord
-	| putrecord
+	| get_record
+	| put_record
 	| if
 	| case
 	| for
@@ -207,21 +207,21 @@ output: "OUTPUT" _output_value
 
 _output_value: expression | _output_value "," _output_value
 
-openfile: "OPENFILE" STRING_LITERAL "FOR" FILE_MODE
+open_file: "OPENFILE" STRING_LITERAL "FOR" FILE_MODE
 
 FILE_MODE: "READ" | "WRITE" | "APPEND" | "RANDOM"
 
-readfile: "READFILE" STRING_LITERAL "," _primary
+read_file: "READFILE" STRING_LITERAL "," _primary
 
-writefile: "WRITEFILE" STRING_LITERAL "," expression
+write_file: "WRITEFILE" STRING_LITERAL "," expression
 
-closefile: "CLOSEFILE" STRING_LITERAL
+close_file: "CLOSEFILE" STRING_LITERAL
 
 seek: "SEEK" STRING_LITERAL "," expression
 
-getrecord: "GETRECORD" STRING_LITERAL "," _primary
+get_record: "GETRECORD" STRING_LITERAL "," _primary
 
-putrecord: "PUTRECORD" STRING_LITERAL "," _primary
+put_record: "PUTRECORD" STRING_LITERAL "," _primary
 
 
 // Terminals
