@@ -216,8 +216,8 @@ class BooleanDataObject(DataObject):
 class BinaryOperation(Expression):
     __slots__ = ("operands",)
 
-    def __init__(self, expr: Tree, /) -> None:
-        self.operands = list(map(Expression, expr.children))
+    def __init__(self, tree: Tree, /) -> None:
+        self.operands = list(map(Expression, tree.children))
 
 
 class Add(BinaryOperation): ...
@@ -268,8 +268,8 @@ class Or(BinaryOperation): ...
 class UnaryOperation(Expression):
     __slots__ = ("operand",)
 
-    def __init__(self, expr: Tree, /) -> None:
-        self.operand = Expression(expr.children[0])
+    def __init__(self, tree: Tree, /) -> None:
+        self.operand = Expression(tree.children[0])
 
 
 class Neg(UnaryOperation): ...
@@ -284,8 +284,8 @@ class Statement(Entity, kind=EntityKind.GENERIC): ...
 class Comment(Statement):
     __slots__ = ("text",)
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.text = cast(Token, stmt.children[0]).value[2:]
+    def __init__(self, tree: Tree, /) -> None:
+        self.text = cast(Token, tree.children[0]).value[2:]
 
 
 class Primary(Expression, kind=EntityKind.GENERIC): ...
@@ -294,39 +294,39 @@ class Primary(Expression, kind=EntityKind.GENERIC): ...
 class Identifier(Primary, kind=EntityKind.SINGLETON, terminal=True):
     __slots__ = ("name",)
 
-    def __init__(self, expr: Token, /) -> None:
-        self.name = expr.value
+    def __init__(self, tree: Token, /) -> None:
+        self.name = tree.value
 
 
 class ConstantDeclaration(Statement):
     __slots__ = ("identifier", "value")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, stmt.children[0]))
-        self.value = Expression(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[0]))
+        self.value = Expression(tree.children[1])
 
 
 class VariableDeclaration(Statement):
     __slots__ = ("identifier", "dimensions", "datatype")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, stmt.children[0]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[0]))
 
         self.dimensions = (
-            list(map(ArrayRange, stmt.children[2:-1]))
-            if stmt.children[1] == "ARRAY"
+            list(map(ArrayRange, tree.children[2:-1]))
+            if tree.children[1] == "ARRAY"
             else None
         )
 
-        self.datatype = DataType(cast(Token, stmt.children[-1]))
+        self.datatype = DataType(cast(Token, tree.children[-1]))
 
 
 class ArrayRange(Entity):
     __slots__ = ("start", "end")
 
-    def __init__(self, array_range: Tree, /) -> None:
-        self.start = Expression(array_range.children[0])
-        self.end = Expression(array_range.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.start = Expression(tree.children[0])
+        self.end = Expression(tree.children[1])
 
 
 class VariableAssignment(Statement):
@@ -340,72 +340,72 @@ class VariableAssignment(Statement):
 class ArraySubscription(Primary):
     __slots__ = ("target", "subscript")
 
-    def __init__(self, pri: Tree, /) -> None:
-        self.target = Primary(pri.children[0])
-        self.subscript = Expression(pri.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.target = Primary(tree.children[0])
+        self.subscript = Expression(tree.children[1])
 
 
 class Block(Entity):
     __slots__ = ("statements",)
 
-    def __init__(self, block: Tree, /) -> None:
-        self.statements = list(map(Statement, block.children))
+    def __init__(self, tree: Tree, /) -> None:
+        self.statements = list(map(Statement, tree.children))
 
 
 class If(Statement):
     __slots__ = ("predicate", "main_block", "else_block")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.predicate = Expression(stmt.children[0])
+    def __init__(self, tree: Tree, /) -> None:
+        self.predicate = Expression(tree.children[0])
 
-        self.main_block = Block(stmt.children[1])
-        self.else_block = stmt.children[2] and Block(stmt.children[2])
+        self.main_block = Block(tree.children[1])
+        self.else_block = tree.children[2] and Block(tree.children[2])
 
 
 class For(Statement):
     __slots__ = ("identifier", "start", "stop", "step", "body")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, stmt.children[0]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[0]))
 
-        self.start = Expression(stmt.children[1])
-        self.stop = Expression(stmt.children[2])
-        self.step = stmt.children[3] and Expression(stmt.children[3])
+        self.start = Expression(tree.children[1])
+        self.stop = Expression(tree.children[2])
+        self.step = tree.children[3] and Expression(tree.children[3])
 
-        self.body = Block(stmt.children[4])
+        self.body = Block(tree.children[4])
 
 
 class While(Statement):
     __slots__ = ("predicate", "block")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.predicate = Expression(stmt.children[0])
-        self.block = Block(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.predicate = Expression(tree.children[0])
+        self.block = Block(tree.children[1])
 
 
 class Repeat(Statement):
     __slots__ = ("block", "predicate")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.block = Block(stmt.children[0])
-        self.predicate = Expression(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.block = Block(tree.children[0])
+        self.predicate = Expression(tree.children[1])
 
 
 class Case(Statement):
     __slots__ = ("predicate", "blocks")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.predicate = Expression(stmt.children[0])
-        self.blocks = list(map(CaseBlock, stmt.children[1:-1]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.predicate = Expression(tree.children[0])
+        self.blocks = list(map(CaseBlock, tree.children[1:-1]))
 
 
 class CaseBlock(Entity):
     __slots__ = ("predicate_start", "predicate_end", "block")
 
-    def __init__(self, block: Tree, /) -> None:
-        self.predicate_start = Expression(block.children[0])
-        self.predicate_end = block.children[1] and Expression(block.children[1])
-        self.block = Block(block.children[2])
+    def __init__(self, tree: Tree, /) -> None:
+        self.predicate_start = Expression(tree.children[0])
+        self.predicate_end = tree.children[1] and Expression(tree.children[1])
+        self.block = Block(tree.children[2])
 
 
 class Procedure(Statement):
@@ -441,17 +441,17 @@ class Function(Procedure):
 class Parameter(Entity):
     __slots__ = ("identifier", "datatype", "is_byref")
 
-    def __init__(self, param: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, param.children[1]))
-        self.datatype = DataType(cast(Token, param.children[2]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[1]))
+        self.datatype = DataType(cast(Token, tree.children[2]))
         self.is_byref: bool
 
 
 class Return(Statement):
     __slots__ = ("value",)
 
-    def __init__(self, return_stmt: Tree, /) -> None:
-        self.value = Expression(return_stmt.children[0]) if return_stmt else None
+    def __init__(self, tree: Tree, /) -> None:
+        self.value = Expression(tree.children[0]) if tree else None
 
 
 class GenericCall(Statement):
@@ -471,9 +471,9 @@ class CallExpression(Expression, GenericCall): ...
 class Typedef(Statement):
     __slots__ = ("identifier", "definition")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, stmt.children[0]))
-        self.definition = TypeDefinition(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[0]))
+        self.definition = TypeDefinition(tree.children[1])
 
 
 class TypeDefinition(Entity, kind=EntityKind.GENERIC): ...
@@ -482,30 +482,30 @@ class TypeDefinition(Entity, kind=EntityKind.GENERIC): ...
 class EnumValues(TypeDefinition):
     __slots__ = ("values",)
 
-    def __init__(self, typedef: Tree, /) -> None:
-        self.values = list(map(Identifier, cast(Iterable[Token], typedef.children)))
+    def __init__(self, tree: Tree, /) -> None:
+        self.values = list(map(Identifier, cast(Iterable[Token], tree.children)))
 
 
 class SetDefinition(Statement):
     __slots__ = ("identifier", "elements")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, stmt.children[0]))
-        self.elements = list(map(Expression, stmt.children[1:]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[0]))
+        self.elements = list(map(Expression, tree.children[1:]))
 
 
 class PointerType(TypeDefinition):
     __slots__ = ("type",)
 
-    def __init__(self, typedef: Tree, /) -> None:
-        self.type = DataType(cast(Token, typedef.children[0]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.type = DataType(cast(Token, tree.children[0]))
 
 
 class GenericPointer(Entity):
     __slots__ = ("target",)
 
-    def __init__(self, pri: Tree, /) -> None:
-        self.target = Expression(pri.children[0])
+    def __init__(self, tree: Tree, /) -> None:
+        self.target = Expression(tree.children[0])
 
 
 class Pointer(Primary, GenericPointer): ...
@@ -517,56 +517,62 @@ class PointerDereference(Expression, GenericPointer): ...
 class Record(TypeDefinition):
     __slots__ = ("members",)
 
-    def __init__(self, typedef: Tree, /) -> None:
-        self.members = list(map(Statement, typedef.children))
+    def __init__(self, tree: Tree, /) -> None:
+        self.members = list(map(Statement, tree.children))
 
 
 class SetType(TypeDefinition):
     __slots__ = ("type",)
 
-    def __init__(self, typedef: Tree, /) -> None:
-        self.type = DataType(cast(Token, typedef.children[0]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.type = DataType(cast(Token, tree.children[0]))
 
 
 class Class(Statement):
     __slots__ = ("identifier", "parent", "members")
 
-    def __init__(self, class_decl: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, class_decl.children[0]))
-        self.parent = class_decl.children[1] and Identifier(
-            cast(Token, class_decl.children[1])
-        )
-        self.members = list(map(MemberDeclaration, class_decl.children[2:]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[0]))
+        self.parent = tree.children[1] and Identifier(cast(Token, tree.children[1]))
+        self.members = list(map(MemberDeclaration, tree.children[2:]))
 
 
 class MemberDeclaration(Statement):
     __slots__ = ("is_private", "declaration")
 
-    def __init__(self, memb_decl: Tree, /) -> None:
-        self.is_private = memb_decl.children[0] == "PRIVATE"
-        self.declaration = Statement(memb_decl.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.is_private = tree.children[0] == "PRIVATE"
+        self.declaration = Statement(tree.children[1])
 
 
 class RecordAccess(Primary):
     __slots__ = ("container", "item")
 
-    def __init__(self, record_access: Tree, /) -> None:
-        self.container = Primary(record_access.children[0])
-        self.item = Identifier(cast(Token, record_access.children[1]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.container = Primary(tree.children[0])
+        self.item = Identifier(cast(Token, tree.children[1]))
+
+
+class New(Expression):
+    __slots__ = ("identifier", "arguments")
+
+    def __init__(self, tree: Tree, /) -> None:
+        self.identifier = Identifier(cast(Token, tree.children[0]))
+        self.arguments = list(map(Expression, tree.children[1:]))
 
 
 class Input(Statement):
     __slots__ = ("target",)
 
-    def __init__(self, input_stmt: Tree, /) -> None:
-        self.target = Primary(cast(Token, input_stmt.children[0]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.target = Primary(cast(Token, tree.children[0]))
 
 
 class GenericCommand(Statement):
     __slots__ = ("arguments",)
 
-    def __init__(self, cmd: Tree, /) -> None:
-        self.arguments = list(map(Expression, cmd.children))
+    def __init__(self, tree: Tree, /) -> None:
+        self.arguments = list(map(Expression, tree.children))
 
 
 class Output(GenericCommand): ...
@@ -575,59 +581,51 @@ class Output(GenericCommand): ...
 class OpenFile(Statement):
     __slots__ = ("name", "mode")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.name = StringDataObject(cast(Token, stmt.children[0]))
-        self.mode = str(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, tree.children[0]))
+        self.mode = str(tree.children[1])
 
 
 class ReadFile(Statement):
     __slots__ = ("name", "destination")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.name = StringDataObject(cast(Token, stmt.children[0]))
-        self.destination = Primary(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, tree.children[0]))
+        self.destination = Primary(tree.children[1])
 
 
 class WriteFile(Statement):
     __slots__ = ("name", "data")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.name = StringDataObject(cast(Token, stmt.children[0]))
-        self.data = Expression(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, tree.children[0]))
+        self.data = Expression(tree.children[1])
 
 
 class CloseFile(Statement):
     __slots__ = ("name",)
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.name = StringDataObject(cast(Token, stmt.children[0]))
+    def __init__(self, tree: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, tree.children[0]))
 
 
 class Seek(Statement):
     __slots__ = ("name", "target")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.name = StringDataObject(cast(Token, stmt.children[0]))
-        self.target = Expression(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, tree.children[0]))
+        self.target = Expression(tree.children[1])
 
 
 class FileRecordOperation(Statement, kind=EntityKind.GENERIC):
     __slots__ = ("name", "target")
 
-    def __init__(self, stmt: Tree, /) -> None:
-        self.name = StringDataObject(cast(Token, stmt.children[0]))
-        self.target = Primary(stmt.children[1])
+    def __init__(self, tree: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, tree.children[0]))
+        self.target = Primary(tree.children[1])
 
 
 class GetRecord(FileRecordOperation): ...
 
 
 class PutRecord(FileRecordOperation): ...
-
-
-class New(Expression):
-    __slots__ = ("identifier", "arguments")
-
-    def __init__(self, stmt: Tree, /) -> None:
-        self.identifier = Identifier(cast(Token, stmt.children[0]))
-        self.arguments = list(map(Expression, stmt.children[1:]))
