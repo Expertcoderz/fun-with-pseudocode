@@ -572,6 +572,59 @@ class GenericCommand(Statement):
 class Output(GenericCommand): ...
 
 
+class OpenFile(Statement):
+    __slots__ = ("name", "mode")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, stmt.children[0]))
+        self.mode = str(stmt.children[1])
+
+
+class ReadFile(Statement):
+    __slots__ = ("name", "destination")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, stmt.children[0]))
+        self.destination = Primary(stmt.children[1])
+
+
+class WriteFile(Statement):
+    __slots__ = ("name", "data")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, stmt.children[0]))
+        self.data = Expression(stmt.children[1])
+
+
+class CloseFile(Statement):
+    __slots__ = ("name",)
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, stmt.children[0]))
+
+
+class Seek(Statement):
+    __slots__ = ("name", "target")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, stmt.children[0]))
+        self.target = Expression(stmt.children[1])
+
+
+class FileRecordOperation(Statement, kind=EntityKind.GENERIC):
+    __slots__ = ("name", "target")
+
+    def __init__(self, stmt: Tree, /) -> None:
+        self.name = StringDataObject(cast(Token, stmt.children[0]))
+        self.target = Primary(stmt.children[1])
+
+
+class GetRecord(FileRecordOperation): ...
+
+
+class PutRecord(FileRecordOperation): ...
+
+
 class New(Expression):
     __slots__ = ("identifier", "arguments")
 
